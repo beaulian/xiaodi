@@ -19,9 +19,4 @@ ENV TZ=Asia/Shanghai
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN touch /var/log/xiaodi/cron.log
-
-RUN cp conf/*.conf /etc/supervisor/conf.d/ && \
-	  echo "0  0    * * *   root    /usr/bin/python /code/mongo_schedule.py >> /var/log/xiaodi/cron.log 2>&1" >> /etc/crontab
-
 CMD cron && /usr/bin/supervisord -n
