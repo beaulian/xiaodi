@@ -1,0 +1,39 @@
+api:
+  build: .
+  ports:
+    - "8001:8001"
+    - "8002:8002"
+    - "8003:8003"
+    - "8004:8004"
+    - "3366:3366"
+  volumes:
+    - .:/code
+    - /var/log/xiaodi:/var/log/xiaodi
+    - /etc/localtime:/etc/localtime
+  links:
+    - rabbit:rabbit
+    - mysql:mysql
+    - redis:redis
+
+rabbit:
+  image: daocloud.io/shenaishiren/xiaodi-rabbitmq
+  ports:
+    - "5672"
+
+mongo:
+  image: daocloud.io/shenaishiren/xiaodi-mysql-auth
+  environment:
+    - MYSQL_DATABASE=xxxx
+    - MYSQL_USER=xxxx
+    - MYSQL_PASSWORD=xxxx
+  volumes:
+    - /data/db:/data/db
+  ports:
+    - "3306:3306"
+
+redis:
+  image: daocloud.io/daocloud/dao-redis:master-init
+  environment:
+    - REDIS_PASS=xxxxx
+  ports:
+    - "6379:6379"

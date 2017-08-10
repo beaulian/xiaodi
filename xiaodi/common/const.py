@@ -1,0 +1,4 @@
+# coding=utf-8
+
+DB_STRING_LENGTH = 64
+DEFAULT_THREADS = 6
