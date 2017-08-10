@@ -19,4 +19,6 @@ ENV TZ=Asia/Shanghai
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+RUN cp conf/*.conf /etc/supervisor/conf.d/
+
 CMD cron && /usr/bin/supervisord -n
