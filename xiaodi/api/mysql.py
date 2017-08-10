@@ -164,8 +164,8 @@ def init_db():
     Base.metadata.create_all(engine)
 
     session = DBSession()
-    admin1 = Admin(username='adminxd1', password='$1$FrvXiQbc$5DGcuYIfiR2fXKdIpnSNE1')
-    admin2 = Admin(username='adminxd2', password='$1$XBDNUudY$MFx2xhum.QfFtiHDV9msT0')
+    admin1 = Admin(username='xxxx', password='xxx')
+    admin2 = Admin(username='xxxx', password='xxx')
     session.add_all([admin1, admin2])
 
     black_list = BlackList(list=json.dumps([]))
