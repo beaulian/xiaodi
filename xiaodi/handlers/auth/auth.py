@@ -49,7 +49,6 @@ def manager_login_authentication(username, password):
 
 def generate_identifier(username):
     username_list = username.split("-")
-    # 将username_list乱序
     random.shuffle(username_list)
 
     return hashlib.md5("-".join(username_list)).hexdigest()

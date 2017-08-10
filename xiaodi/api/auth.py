@@ -91,11 +91,6 @@ class Authorizer(object):
 authorizer = Authorizer.get_instance()
 
 
-def __wait_for_generator(generator):
-    future = next(generator, None)
-    generator.send((yield future))
-
-
 def require_auth(permission):
     def decorator(func):
         @wraps(func)
