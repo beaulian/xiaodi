@@ -1,18 +1,17 @@
 # coding=utf-8
-import jwt
-import pickle
+import json
 import logging
-from tornado import gen
-from functools import wraps
 from collections import namedtuple
-from passlib.hash import md5_crypt
 from datetime import datetime, timedelta
+from functools import wraps
 
+import jwt
+from tornado import gen
+from xiaodi.api.errors import not_authorized_error
+from xiaodi.api.mysql import db, User, Admin, BlackList, Permission, execute
+from xiaodi.settings import SECRET_CODE
 from xiaodi.settings import SU_ADMIN
 from xiaodi.settings import SU_TOKEN
-from xiaodi.settings import SECRET_CODE
-from xiaodi.api.errors import not_authorized_error
-from xiaodi.api.mysql import db, User, Admin, Permission, execute
 
 LOG = logging.getLogger(__name__)
 
@@ -43,17 +42,6 @@ class AuthorizerHelper(object):
             else:
                 return False
 
-    @classmethod
-    def encrypt(cls, password):
-        return md5_crypt.encrypt(password)
-
-    @classmethod
-    def verify_password(cls, password, password_hash):
-        if md5_crypt.verify(password, password_hash):
-            return True
-        else:
-            return False
-
 
 class Authorizer(object):
     def __init__(self):
@@ -77,11 +65,11 @@ class Authorizer(object):
 
     @gen.coroutine
     def authenticate_common(self, username=None, token=None):
-        raise gen.Return(self._authenticate(username=username, token=token))
+        raise gen.Return((yield self._authenticate(username=username, token=token)))
 
     @gen.coroutine
     def authenticate_manager(self, username=None, token=None):
-        raise gen.Return(self._authenticate(object_=Admin, username=username, token=token))
+        raise gen.Return((yield self._authenticate(object_=Admin, username=username, token=token)))
 
     def authenticate_admin(self, username=None, token=None):
         if not (username == SU_ADMIN and token == SU_TOKEN):
@@ -91,7 +79,7 @@ class Authorizer(object):
 authorizer = Authorizer.get_instance()
 
 
-def require_auth(permission):
+def require_auth(permission, identified=False, innocence=False):
     def decorator(func):
         @wraps(func)
         @gen.coroutine
@@ -110,6 +98,14 @@ def require_auth(permission):
                 self._G.user = authorizer.authenticate_admin(
                     username=username, token=token
                 )
+            if identified and not self._G.user.identified:
+                not_authorized_error('user %s is not identified' % self._G.user.nickname)
+            if innocence:
+                black_list = yield execute([('query', BlackList),
+                                           ('filter', None),
+                                           ('first', None)])
+                if self._G.user.id in json.loads(black_list.list):
+                    not_authorized_error('user %s is not innocence' % self._G.user.nickname)
             # run generator until finish
             f = func(self, *args, **kwargs)
             while True:
@@ -120,6 +116,5 @@ def require_auth(permission):
             raise gen.Return(None)
         return wrapper
     return decorator
-
 
 

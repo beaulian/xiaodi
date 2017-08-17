@@ -6,6 +6,7 @@ from datetime import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy import Column, String, ForeignKey, Integer, Float, DateTime, Boolean
 
@@ -21,6 +22,10 @@ engine = create_engine('mysql+mysqldb://%s:%s@%s:%d/%s?charset=utf8' %
                        (MYSQL_USERNAME, MYSQL_PASSWORD, MYSQL_HOST,
                         MYSQL_PORT, DB_NAME))
 DBSession = sessionmaker(bind=engine)
+
+
+class ExecuteSqlError(InvalidRequestError):
+    pass
 
 
 def _convert_attr_to_dict(cls):
@@ -43,7 +48,7 @@ def _convert_attr_to_dict(cls):
 
 def _init_cls(cls):
     setattr(cls, '__tablename__', cls.__name__)
-    setattr(cls, 'id', Column(Integer, primary_key=True))
+    setattr(cls, 'id', Column(Integer, primary_key=True, autoincrement=True))
     for _str in getattr(cls, 'stringV', []):
         setattr(cls, _str, Column(String(DB_STRING_LENGTH)))
     for _int in getattr(cls, 'integerV', []):
@@ -128,7 +133,8 @@ class Task(Base):
 
 class Sign(Base):
     stringV = ['record']
-    integerV = ['last_sign']
+    integerV = ['day']
+    timeV = ['last_sign']
     foreignKeyV = {'user_id': 'User.id'}
 
 
@@ -156,6 +162,12 @@ class PresentRecord(Base):
     foreignKeyV = {'user_id': 'User.id'}
 
 
+class RequestRecord(Base):
+    stringV = ['detail']
+    timeV = ['time']
+    foreignKeyV = {'user_id': 'User.id'}
+
+
 class BlackList(Base):
     stringV = ['list']
 
@@ -164,8 +176,8 @@ def init_db():
     Base.metadata.create_all(engine)
 
     session = DBSession()
-    admin1 = Admin(username='xxxx', password='xxx')
-    admin2 = Admin(username='xxxx', password='xxx')
+    admin1 = Admin(username='xxx', password='xxx')
+    admin2 = Admin(username='xxx', password='xxx')
     session.add_all([admin1, admin2])
 
     black_list = BlackList(list=json.dumps([]))
@@ -192,7 +204,7 @@ db = CeleryDB()
 def execute(sqls=None):
     from xiaodi.common.tasks import CommonTaskFactory, TaskNames
 
-    return CommonTaskFactory.get_task_instance(TaskNames.EXECUTE_SQL.value).run(sqls)
+    return CommonTaskFactory.get_task(TaskNames.EXECUTE_SQL.value).run(sqls)
 
 
 def start_update_engagement():

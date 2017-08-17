@@ -22,9 +22,9 @@ rabbit:
 mongo:
   image: daocloud.io/shenaishiren/xiaodi-mysql-auth
   environment:
-    - MYSQL_DATABASE=xxxx
+    - MYSQL_DATABASE=xxx
     - MYSQL_USER=xxxx
-    - MYSQL_PASSWORD=xxxx
+    - MYSQL_PASSWORD=xxx
   volumes:
     - /data/db:/data/db
   ports:
@@ -33,6 +33,6 @@ mongo:
 redis:
   image: daocloud.io/daocloud/dao-redis:master-init
   environment:
-    - REDIS_PASS=xxxxx
+    - REDIS_PASS=xxxx
   ports:
     - "6379:6379"

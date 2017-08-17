@@ -2,7 +2,7 @@
 import importlib
 
 handlers = []
-handler_names = ["auth", ]
+handler_names = ["auth", "user", ]
 
 
 def _generate_handler_patterns(root_module, handler_names):

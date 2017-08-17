@@ -14,16 +14,15 @@ PREFIX_URL = "http://api.xiaodi16.com"
 # mongodb setting
 MYSQL_HOST = "localhost"
 MYSQL_PORT = 3306
-DB_NAME = "xxxxx"
-MYSQL_USERNAME = "xxxxx"
-MYSQL_PASSWORD = "xxxxx"
+DB_NAME = "xxx"
+MYSQL_USERNAME = "xxx"
+MYSQL_PASSWORD = "xxx"
 
 # security
-SECRET_CODE = "xxxxx"
-
+SECRET_CODE = "xxx"
 # admin account
-SU_ADMIN = "xxxx"
-SU_TOKEN = "xxxx"
+SU_ADMIN = "xxx"
+SU_TOKEN = "xxx"
 
 # default path of static path
 DEFAULT_PYTHON_PATH = os.getcwd()

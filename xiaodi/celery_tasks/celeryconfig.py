@@ -6,7 +6,7 @@ from celery.schedules import crontab
 
 CELERY_IMPORTS = ("tasks", )
 CELERY_RESULT_BACKEND = "amqp"
-BROKER_URL = "amqp://xxx:xxx@127.0.0.1:5672//"
+BROKER_URL = "amqp://guest:guest@127.0.0.1:5672//"
 CELERY_TASK_RESULT_EXPIRES = 300
 CELERY_TIMEZONE = 'UTC'
 

@@ -3,14 +3,14 @@
 import oss2
 
 
-auth = oss2.Auth('xxxx', 'xxxx')
+auth = oss2.Auth('xxx', 'xxx')
 endpoint = 'http://oss-cn-hangzhou.aliyuncs.com'
 
 
 class OSSFile(object):
 
     def __init__(self):
-        self._bucket = oss2.Bucket(auth, endpoint, "xxxx")
+        self._bucket = oss2.Bucket(auth, endpoint, "xiaodi16")
 
     def test(self):
         from itertools import islice

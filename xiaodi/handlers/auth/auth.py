@@ -1,14 +1,15 @@
 # coding=utf-8
+import re
+import json
 import random
 import hashlib
 
 from tornado import gen
 from datetime import datetime
-from xiaodi.api.mysql import User, Admin, PointRecord
+from xiaodi.api.mysql import User, Admin, PointRecord, Auth, Engagement, Sign, RequestRecord
 from xiaodi.api.mysql import execute, Permission
-from xiaodi.api.auth import AuthorizerHelper
+from xiaodi.api.db_utils import get_db_object_by_attr
 from xiaodi.api.errors import not_authorized_error
-from xiaodi.api.errors import bad_request_error
 from xiaodi.api.errors import invalid_argument_error
 from xiaodi.api.errors import already_exist_error
 from xiaodi.common.image_handler import allow_image_format
@@ -19,16 +20,17 @@ from xiaodi.settings import INVITE_AWARD_POINT
 from xiaodi.settings import DEFAULT_POINT
 from xiaodi.settings import DEFAULT_HEADIMG
 from xiaodi.settings import DEFAULT_CREDIBILITY
+from xiaodi.common.tasks import TaskNames
+from xiaodi.common.tasks import CommonTaskFactory
+from xiaodi.common.password_manager import password_manager
 
 
 @gen.coroutine
 def login_authentication(phone, password):
-    user = yield execute([('query', User),
-                          ('filter', User.phone == phone),
-                          ('first', '')])
+    user = yield get_db_object_by_attr(User, phone=phone)
     if user is None:
         raise gen.Return(not_authorized_error('wrong phone'))
-    if not AuthorizerHelper.verify_password(password, user.password):
+    if not password_manager.verify_password(password, user.password):
         raise gen.Return(not_authorized_error('wrong password'))
 
     raise gen.Return(user)
@@ -36,12 +38,10 @@ def login_authentication(phone, password):
 
 @gen.coroutine
 def manager_login_authentication(username, password):
-    user = yield execute(sqls=[('query', Admin),
-                              ('filter', Admin.username == username),
-                              ('first', None)])
+    user = yield get_db_object_by_attr(Admin, username=username)
     if user is None:
         raise gen.Return(not_authorized_error('wrong username'))
-    if not AuthorizerHelper.verify_password(password, user.password):
+    if not password_manager.verify_password(password, user.password):
         raise gen.Return(not_authorized_error('wrong password'))
 
     raise gen.Return(user)
@@ -73,9 +73,7 @@ def generate_invitingcode():
     ]
     code = "".join(random.sample(random_seed, random.randint(4, 8)))
     while True:
-        temp = yield execute([('query', User),
-                              ('filter', User.code == code),
-                              ('first', None)])
+        temp = yield get_db_object_by_attr(User, code=code, ignore=True)
         if not temp:
             break
         code = "".join(random.sample(random_seed, random.randint(4, 8)))
@@ -86,32 +84,23 @@ def generate_invitingcode():
 @gen.coroutine
 def register_user(password=None, nickname=None, code=None,
                   headimg=None, sex=None, phone=None, unique_id=None):
-    if (not nickname) or (not phone) or (not password):
-        raise gen.Return(bad_request_error('miss argument: nickname, phone, password are required'))
-    if (yield execute([('query', User),
-                       ('filter', User.phone == phone),
-                       ('first', None)])) is not None:
+    if (yield get_db_object_by_attr(User, phone=phone, ignore=True)) is not None:
         raise gen.Return(already_exist_error('phone %s alreay exist' % phone))
-    if (yield execute([('query', User),
-                       ('filter', User.nickname == nickname),
-                       ('first', None)])) is not None:
+    if (yield get_db_object_by_attr(User, nickname=nickname, ignore=True)) is not None:
         raise gen.Return(already_exist_error('nickname %s alreay exist' % nickname))
     if headimg:
-        if not allow_image_format(headimg[0]["filename"]):
+        if not allow_image_format(headimg["filename"]):
             raise gen.Return(invalid_argument_error('invalid image format: only jpg, ipeg, png is supported'))
 
-        if not allow_image_size(headimg[0]):
+        if not allow_image_size(headimg):
             raise gen.Return(invalid_argument_error('invalid image size: less than or equal 2M is required'))
-
-        headimg_path = save_image_to_oss(headimg[0], OSS_HEADIMG_PATH, str(datetime.now()))
+        headimg_path = save_image_to_oss(headimg, OSS_HEADIMG_PATH, str(datetime.now()))
     else:
         headimg_path = DEFAULT_HEADIMG
 
     bright_point = 0
     if code:
-        user = yield execute([('query', User),
-                              ('filter', User.code == code),
-                              ('first', None)])
+        user = yield get_db_object_by_attr(User, code=code)
         if user:
             user.bright_point += INVITE_AWARD_POINT
             user.code = None
@@ -130,7 +119,7 @@ def register_user(password=None, nickname=None, code=None,
 
     user = User(
         username=generate_unique_username(),
-        password=AuthorizerHelper.encrypt(password),
+        password=password_manager.encrypt(password),
         nickname=nickname,
         phone=phone,
         role=Permission.COMMON,
@@ -151,3 +140,57 @@ def register_user(password=None, nickname=None, code=None,
     yield execute(('commit', None))
 
     raise gen.Return(user)
+
+
+@gen.coroutine
+def identify_user(user, role=None, school='cqu', sid=None,
+                  password=None, truename=None):
+    if user.identified:
+        raise gen.Return(already_exist_error('user %s is already identified' % user.nickname))
+
+    if (yield get_db_object_by_attr(Auth, school_id=sid, ignore=True)) is not None:
+        raise gen.Return(already_exist_error('school_id %s is already identified' % sid))
+
+    result = yield CommonTaskFactory.get_task(TaskNames.IDENTIFY_USER.value).run(
+        school=school, sid=sid, password=password, truename=truename
+    )
+    if result is None:
+        raise gen.Return(invalid_argument_error('certification is failed, please check the params'))
+
+    auth = Auth(
+        user_id=user.id,
+        truename=truename,
+        school_id=sid,
+        school_role=role,
+        identifier=""
+    )
+    engagement = Engagement(
+        user_id=user.id,
+        engagement=json.dumps([0])
+    )
+    sign = Sign(
+        user_id=user.id,
+        day=-1,
+        record=json.dumps([])
+    )
+    user.identified = True
+    user.school = school
+
+    yield execute(('add_all', [auth, engagement, sign, user]))
+    yield execute(('commit', None))
+
+    raise gen.Return(None)
+
+
+@gen.coroutine
+def fulltime_request(user, address=None):
+    auth = yield get_db_object_by_attr(Auth, user_id=user.id, ignore=True)
+    if auth and auth.identifier:
+        raise gen.Return(already_exist_error('user %s is already a xiaodier' % user.nickname))
+
+    request_record = RequestRecord(user_id=user.id, detail=address)
+
+    yield execute(('add', request_record))
+    yield execute(('commit', None))
+
+    raise gen.Return(None)
