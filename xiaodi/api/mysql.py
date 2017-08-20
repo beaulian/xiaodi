@@ -3,6 +3,7 @@ import six
 import json
 import schedule
 from datetime import datetime
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -17,6 +18,7 @@ from xiaodi.settings import MYSQL_PASSWORD
 from xiaodi.settings import DB_NAME
 from xiaodi.common.const import DB_STRING_LENGTH
 from xiaodi.common.utils import change_headimg_url
+from xiaodi.common.cache import Cache
 
 engine = create_engine('mysql+mysqldb://%s:%s@%s:%d/%s?charset=utf8' %
                        (MYSQL_USERNAME, MYSQL_PASSWORD, MYSQL_HOST,
@@ -42,7 +44,10 @@ def _convert_attr_to_dict(cls):
                 else:
                     attrs.update({attr: value})
             else:
-                attrs.update({attr: value})
+                if isinstance(value, datetime):
+                    attrs.update({attr: str(value)})
+                else:
+                    attrs.update({attr: value})
     return attrs
 
 
@@ -124,7 +129,7 @@ class Msg(Base):
 
 
 class Task(Base):
-    stringV = ['school', 'thumbnail', 'type', 'weight',
+    stringV = ['school', 'thumbnail', 'weight', 'type',
                'source', 'destination', 'contact', 'describe']
     integerV = ['reward', 'state']
     timeV = ['deadline', 'time']
@@ -176,8 +181,8 @@ def init_db():
     Base.metadata.create_all(engine)
 
     session = DBSession()
-    admin1 = Admin(username='xxx', password='xxx')
-    admin2 = Admin(username='xxx', password='xxx')
+    admin1 = Admin(username='adminxd1', password='$1$FrvXiQbc$5DGcuYIfiR2fXKdIpnSNE1')
+    admin2 = Admin(username='adminxd2', password='$1$XBDNUudY$MFx2xhum.QfFtiHDV9msT0')
     session.add_all([admin1, admin2])
 
     black_list = BlackList(list=json.dumps([]))
@@ -190,15 +195,20 @@ def drop_db():
     Base.metadata.drop_all(engine)
 
 
-class CeleryDB(object):
-    def __init__(self):
-        self._session = DBSession()
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = DBSession()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
-    @property
-    def session(self):
-        return self._session
-
-db = CeleryDB()
+session = DBSession()
 
 
 def execute(sqls=None):
@@ -209,16 +219,15 @@ def execute(sqls=None):
 
 def start_update_engagement():
     def update_job():
-        session = DBSession()
-        for engagement in session.query(Engagement).all():
-            en = json.loads(engagement.engagement)
-            en.append(0)
-            engagement.engagement = json.dumps(en)
-            session.add(engagement)
-            session.commit()
-        session.close()
+        with DBSession() as session:
+            for engagement in session.query(Engagement).all():
+                en = json.loads(engagement.engagement)
+                en.append(0)
+                engagement.engagement = json.dumps(en)
+                session.add(engagement)
+                session.commit()
 
-        schedule.every().day.at("00:00").do(update_job)
+    schedule.every().day.at('00:00').do(update_job)
 
 
 if __name__ == '__main__':

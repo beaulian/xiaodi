@@ -1,25 +1,20 @@
 # coding=utf-8
 import json
 import logging
-from collections import namedtuple
 from datetime import datetime, timedelta
 from functools import wraps
 
 import jwt
 from tornado import gen
 from xiaodi.api.errors import not_authorized_error
-from xiaodi.api.mysql import db, User, Admin, BlackList, Permission, execute
+from xiaodi.api.mysql import User, Admin, BlackList, Permission, execute
 from xiaodi.settings import SECRET_CODE
 from xiaodi.settings import SU_ADMIN
 from xiaodi.settings import SU_TOKEN
+from xiaodi.settings import XIAODIER
+from xiaodi.common.utils import gen_temp_object
 
 LOG = logging.getLogger(__name__)
-
-
-'''gen.Return 一旦coroutine装饰器捕获到了异常
-   self._finished就会被置为True，并执行相应的
-   return
-'''
 
 
 class AuthorizerHelper(object):
@@ -44,9 +39,6 @@ class AuthorizerHelper(object):
 
 
 class Authorizer(object):
-    def __init__(self):
-        self.db = db
-
     @classmethod
     def get_instance(cls):
         return Authorizer()
@@ -74,12 +66,12 @@ class Authorizer(object):
     def authenticate_admin(self, username=None, token=None):
         if not (username == SU_ADMIN and token == SU_TOKEN):
             return not_authorized_error('wrong admin username or token')
-        return namedtuple('User', ['username', 'token'])(username, token)
+        return gen_temp_object(username=username, token=token)
 
 authorizer = Authorizer.get_instance()
 
 
-def require_auth(permission, identified=False, innocence=False):
+def require_auth(permission, identified=False, innocence=False, xiaodier=False):
     def decorator(func):
         @wraps(func)
         @gen.coroutine
@@ -106,6 +98,8 @@ def require_auth(permission, identified=False, innocence=False):
                                            ('first', None)])
                 if self._G.user.id in json.loads(black_list.list):
                     not_authorized_error('user %s is not innocence' % self._G.user.nickname)
+            if xiaodier and self._G.user.role not in XIAODIER:
+                not_authorized_error('user %s is not xiaodier' % self._G.user.nickname)
             # run generator until finish
             f = func(self, *args, **kwargs)
             while True:

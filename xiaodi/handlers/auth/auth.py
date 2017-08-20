@@ -1,5 +1,4 @@
 # coding=utf-8
-import re
 import json
 import random
 import hashlib
@@ -12,8 +11,6 @@ from xiaodi.api.db_utils import get_db_object_by_attr
 from xiaodi.api.errors import not_authorized_error
 from xiaodi.api.errors import invalid_argument_error
 from xiaodi.api.errors import already_exist_error
-from xiaodi.common.image_handler import allow_image_format
-from xiaodi.common.image_handler import allow_image_size
 from xiaodi.common.image_handler import save_image_to_oss
 from xiaodi.settings import OSS_HEADIMG_PATH
 from xiaodi.settings import INVITE_AWARD_POINT
@@ -89,12 +86,8 @@ def register_user(password=None, nickname=None, code=None,
     if (yield get_db_object_by_attr(User, nickname=nickname, ignore=True)) is not None:
         raise gen.Return(already_exist_error('nickname %s alreay exist' % nickname))
     if headimg:
-        if not allow_image_format(headimg["filename"]):
-            raise gen.Return(invalid_argument_error('invalid image format: only jpg, ipeg, png is supported'))
-
-        if not allow_image_size(headimg):
-            raise gen.Return(invalid_argument_error('invalid image size: less than or equal 2M is required'))
-        headimg_path = save_image_to_oss(headimg, OSS_HEADIMG_PATH, str(datetime.now()))
+        headimg_path = yield save_image_to_oss(headimg, OSS_HEADIMG_PATH,
+                                         str(datetime.now()), when_fail=DEFAULT_HEADIMG)
     else:
         headimg_path = DEFAULT_HEADIMG
 

@@ -6,6 +6,7 @@ from tornado.httputil import HTTPFile
 from xiaodi.api.abc import Namespace
 from xiaodi.common.utils import xss_filter
 from xiaodi.api.errors import invalid_argument_error
+from xiaodi.api.errors import internal_server_error
 
 
 __all__ = ['RequestParser']
@@ -45,7 +46,12 @@ class Argument(object):
         elif isinstance(value, HTTPFile) and self.type == HTTPFile:
             return value
 
-        return self.type(value)
+        if callable(self.type):
+            try:
+                return self.type(value)
+            except Exception as e:
+                return internal_server_error(str(e))
+        return value
 
     def parse(self, req):
         if self.source == ArgumentSources.BODY.value:
@@ -57,8 +63,7 @@ class Argument(object):
             if isinstance(value, list) and len(value):
                 value = value[0]
         else:
-            value = None
-
+            return internal_server_error('no such params source: %s' % self.source)
         try:
             value = self.convert(value)
         except ValueError as error:

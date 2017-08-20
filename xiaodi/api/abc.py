@@ -5,7 +5,6 @@ import logging
 from tornado.gen import coroutine
 from tornado.web import asynchronous
 from tornado.web import RequestHandler
-from cached_property import cached_property
 from tornado.web import HTTPError
 from xiaodi.api.errors import HTTPAPIError
 from xiaodi.api.errors import INTERNAL_SERVER_ERROR
@@ -84,10 +83,6 @@ class BaseApiHandler(RequestHandler):
 
     def options(self, *args):
         self.__set_cross_domain_headers()
-
-    @cached_property
-    def db(self):
-        return self.application.db
 
     @property
     def settings(self):

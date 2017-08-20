@@ -1,16 +1,20 @@
 # -*- coding: UTF-8 -*-
 
 import oss2
+import logging
+from xiaodi.common.cache import Cache
 
-
-auth = oss2.Auth('xxx', 'xxx')
-endpoint = 'http://oss-cn-hangzhou.aliyuncs.com'
+LOG = logging.getLogger(__name__)
 
 
 class OSSFile(object):
 
-    def __init__(self):
-        self._bucket = oss2.Bucket(auth, endpoint, "xiaodi16")
+    def __init__(self, auth=(), endpoint=None, bucket_name=None, timeout=5):
+        # 注意考虑超时的情况
+        self._bucket = oss2.Bucket(auth=oss2.Auth(*auth),
+                                   endpoint=endpoint,
+                                   bucket_name=bucket_name,
+                                   connect_timeout=timeout)
 
     def test(self):
         from itertools import islice
@@ -26,7 +30,10 @@ class OSSFile(object):
     def __str__(self):
         return 'OSSFile'
 
-ossfile = OSSFile()
+
+@Cache.cache_in_request(async=False)
+def get_ossfile_client(**kwargs):
+    return OSSFile(**kwargs)
 
 
 if __name__ == '__main__':

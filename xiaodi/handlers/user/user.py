@@ -1,5 +1,5 @@
 # coding=utf-8
-
+import logging
 from tornado import gen
 from datetime import datetime
 from xiaodi.api.mysql import Auth, User
@@ -8,15 +8,15 @@ from xiaodi.api.db_utils import get_db_object_by_attr
 from xiaodi.api.errors import internal_server_error
 from xiaodi.api.errors import invalid_argument_error
 from xiaodi.api.errors import already_exist_error
-from xiaodi.common.image_handler import allow_image_format
-from xiaodi.common.image_handler import allow_image_size
-from xiaodi.common.image_handler import remove_image
+from xiaodi.common.image_handler import remove_image_from_oss
 from xiaodi.common.image_handler import save_image_to_oss
 from xiaodi.common.const import FULLTIME_ROLE
 from xiaodi.settings import DEFAULT_HEADIMG
 from xiaodi.settings import OSS_HEADIMG_PATH
 from xiaodi.common.password_manager import password_manager
 from xiaodi.common.password_manager import WrongOldPasswordError
+
+LOG = logging.getLogger(__name__)
 
 
 @gen.coroutine
@@ -38,15 +38,13 @@ def put_user(user, nickname=None, headimg=None, sex=None, introduction=None):
             raise gen.Return(already_exist_error('nickname %s is already existed' % nickname))
         user.nickname = nickname
     if headimg:
-        if not allow_image_format(headimg["filename"]):
-            raise gen.Return(invalid_argument_error('invalid image format: only jpg, ipeg, png is supported'))
-
-        if not allow_image_size(headimg):
-            raise gen.Return(invalid_argument_error('invalid image size: less than or equal 2M is required'))
         if user.headimg != DEFAULT_HEADIMG:
-            remove_image(user.headimg)
+            result = yield remove_image_from_oss(user.headimg)
+            if not result:
+                LOG.error('failed to remove image: %s' % user.headimg)
 
-        headimg_path = save_image_to_oss(headimg, OSS_HEADIMG_PATH, str(datetime.now()))
+        headimg_path = yield save_image_to_oss(headimg, OSS_HEADIMG_PATH,
+                                               str(datetime.now()), when_fail=DEFAULT_HEADIMG)
         user.headimg = headimg_path
     if sex:
         user.sex = sex
