@@ -33,5 +33,5 @@ tornado + mysql + redis + supervisor + docker
 
 ## 总结
 python2.7版本的tornado着实有点难用，很容易造成"yield地狱"，
-而且python2.7对异步的支持远不及python3，所以推荐不使用tornado，
+而且python2.7对异步的支持远不及python3，所以推荐不使用2.7版本的tornado，
 换成flask_restful这种同步框架或者对异步支持较好的sanic框架
