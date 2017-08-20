@@ -9,11 +9,14 @@
 * 换了数据库mysql，以前用的是mongodb，简单，但是后面发现跨表查询确实是个问题，而且motor不支持ORM
 * 去掉了celery，因为感觉就两个定时任务，完全没必要用celery，schedule守护线程可能是个更好更轻量的选择
 * 对项目目录做了重大调整，增加了handlers和common，api目录，对程序的职责做了更明确的划分
-* IO全部异步化，以前都是只有mongodb是异步客户端，而redis和oss都是同步请求，现在感觉以前很天真
+* 网络或磁盘IO全部异步化，以前都是只有mongodb是异步客户端，而redis和oss都是同步请求
 * 对url.py做了重大改变，以前是只有多了一个api，就往url.py里写，弄得后面上百个api很难找到某个
 * 功能高度封装，降低代码耦合度，尤其是对异步任务的封装，见xiaodi/common/tasks.py
 * 充分利用了python的特性，如对象协议、元类、混入类mixin、列表推导式、生成器
 * 对参数的接收采用了flask_restful的reqparse思想，使得代码精简了很多
+* 考虑了设计模式，如工厂方法
+* 增加了oss连接超时处理
+* 引入了请求时cache，确保同一次http请求不会对某个对象请求多次
 * 引入了日志
 * 引入了sse
 
@@ -23,9 +26,10 @@
 * 巧妙地用run_on_executor把mysql的ORM查询异步化
 * 对tornado抛出异常的处理
 * 对异步任务的封装，对delivery的封装，以及对redis的封装
+* docker以及docker-compose的支持
 
 ## 技术架构
-tornado + mysql + redis + supervisor
+tornado + mysql + redis + supervisor + docker
 
 ## 总结
 python2.7版本的tornado着实有点难用，很容易造成"yield地狱"，

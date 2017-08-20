@@ -11,7 +11,7 @@ format_addr = lambda t: ''.join(t.split()[0:3:2])
 
 
 class DeliveryHandler(BaseApiHandler):
-    @require_auth(Permission.COMMON, identified=True, innocence=True)
+    @require_auth(Permission.COMMON, identified=True, innocence=True, xiaodier=True)
     def post(self):
         args = RequestParser(). \
             add_body_argument('source', required=True, type=format_addr). \
