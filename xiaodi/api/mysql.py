@@ -16,9 +16,12 @@ from xiaodi.settings import MYSQL_PORT
 from xiaodi.settings import MYSQL_USERNAME
 from xiaodi.settings import MYSQL_PASSWORD
 from xiaodi.settings import DB_NAME
+from xiaodi.settings import ADMIN1_USERNAME
+from xiaodi.settings import ADMIN1_PASSWORD
+from xiaodi.settings import ADMIN2_USERNAME
+from xiaodi.settings import ADMIN2_PASSWORD
 from xiaodi.common.const import DB_STRING_LENGTH
 from xiaodi.common.utils import change_headimg_url
-from xiaodi.common.cache import Cache
 
 engine = create_engine('mysql+mysqldb://%s:%s@%s:%d/%s?charset=utf8' %
                        (MYSQL_USERNAME, MYSQL_PASSWORD, MYSQL_HOST,
@@ -181,8 +184,8 @@ def init_db():
     Base.metadata.create_all(engine)
 
     session = DBSession()
-    admin1 = Admin(username='adminxd1', password='$1$FrvXiQbc$5DGcuYIfiR2fXKdIpnSNE1')
-    admin2 = Admin(username='adminxd2', password='$1$XBDNUudY$MFx2xhum.QfFtiHDV9msT0')
+    admin1 = Admin(username=ADMIN1_USERNAME, password=ADMIN1_PASSWORD)
+    admin2 = Admin(username=ADMIN2_USERNAME, password=ADMIN2_PASSWORD)
     session.add_all([admin1, admin2])
 
     black_list = BlackList(list=json.dumps([]))
