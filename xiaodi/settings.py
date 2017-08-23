@@ -122,4 +122,6 @@ MAX_ASSESSMENT_PER_PAGE = 8
 
 ORDER_FIELDS = ['reward', 'weight']
 
+XIAODI_PROCESS_LOCK = '/tmp/xiaodi.lock'
+
 

@@ -9,7 +9,7 @@ import tornado.ioloop
 import tornado.locale
 import tornado.web
 from tornado.options import define, options
-from multiprocessing import Lock
+from fasteners import process_lock
 
 from xiaodi import settings as gsettings
 from xiaodi.api.mysql import start_update_engagement
@@ -20,7 +20,8 @@ from xiaodi.url import handlers
 define("port", default=gsettings.LISTEN_PORT, type=int, help="run no the given port")
 
 LOG = logging.getLogger(__name__)
-LOCK = Lock()
+# 不能用multiprocess的锁，因为multiprocess的锁只适用于父子进程间的锁
+LOCK = process_lock.InterProcessLock(gsettings.XIAODI_PROCESS_LOCK)
 
 
 class Application(tornado.web.Application):
@@ -51,7 +52,7 @@ def __start_schedule_deamon():
 
 
 def __init():
-    if LOCK.acquire(block=False):
+    if LOCK.acquire(blocking=False):
         LOG.info('Acquire process lock succeed at process: %d, start job' % os.getpid())
         start_update_engagement()
         auto_delete_delivery()
